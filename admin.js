@@ -2,6 +2,18 @@ jQuery(document).ready(function($){
     $('.color-field').wpColorPicker();
 });
 
+jQuery(document).ready(function($) {
+    $('#add-discount').on('click', function() {
+        var discountIndex = $('#discounts-section .discount').length;
+        var discountHTML = '<div class="discount">' +
+            '<input type="number" name="mn_asm_discounts[' + discountIndex + '][product_id]" value="" placeholder="Product ID" />' +
+            '<input type="number" name="mn_asm_discounts[' + discountIndex + '][discount_amount]" value="" placeholder="Discount Amount" />' +
+            '</div>';
+        
+        $('#discounts-section').append(discountHTML);
+    });
+});
+
 document.addEventListener('DOMContentLoaded', (event) => {
     // Get the 'Add Bundle Deal' button
     const addBundleDealButton = document.getElementById('add-bundle-deal');

@@ -3,7 +3,7 @@
  * Plugin Name: MN - WordPress After-Sale Manager
  * Plugin URI: https://github.com/mnestorov/wp-after-sale-manager
  * Description: A custom plugin to show additional products on the Thank You page and allow users to add them to their order if the payment method is Cash on Delivery.
- * Version: 1.3
+ * Version: 1.4
  * Author: Martin Nestorov
  * Author URI: https://github.com/mnestorov
  * Text Domain: mn-wordpress-after-sale-manager
@@ -105,6 +105,68 @@ function mn_render_upsell_styles_section() {
     echo '<input type="text" name="asm_upsell_styles[text_color]" value="' . esc_attr($upsell_styles['text_color']) . '" class="color-field" data-default-color="#000000" />';
     echo '<input type="text" name="asm_upsell_styles[border_color]" value="' . esc_attr($upsell_styles['border_color']) . '" class="color-field" data-default-color="#cccccc" />';
     echo '</div>';
+}
+
+// Register Settings for Discounts
+function mn_register_discount_settings() {
+    register_setting('mn_after_sale_manager_settings', 'mn_asm_discounts');
+
+    add_settings_section(
+        'mn_discounts_section',
+        'Discounts',
+        'mn_render_discounts_section',
+        'mn_after-sale-manager'
+    );
+}
+add_action('admin_init', 'mn_register_discount_settings');
+
+// Render Discounts Section
+function mn_render_discounts_section() {
+    $discounts = get_option('mn_asm_discounts', array());
+
+    echo '<div id="discounts-section">';
+    foreach ($discounts as $index => $discount) {
+        echo '<div class="discount">';
+        echo '<input type="number" name="mn_asm_discounts[' . $index . '][product_id]" value="' . esc_attr($discount['product_id']) . '" placeholder="Product ID" />';
+        echo '<input type="number" name="mn_asm_discounts[' . $index . '][discount_amount]" value="' . esc_attr($discount['discount_amount']) . '" placeholder="Discount Amount" />';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '<button type="button" id="add-discount">Add Discount</button>';
+}
+
+// Modify the add_product_to_order function to include discount application
+function mn_add_product_to_order( $order_id, $product_id, $quantity ) {
+    $order = wc_get_order( $order_id );
+    if ( ! $order || $order->get_payment_method() != 'cod' ) {
+        error_log( "Order not found or payment method is not COD: $order_id" );
+        return false;
+    }
+    
+    // Get the product and discount settings
+    $product = wc_get_product( $product_id );
+    $discounts = get_option('mn_asm_discounts', array());
+    
+    // Check if a discount applies to this product
+    foreach ($discounts as $discount) {
+        if ($discount['product_id'] == $product_id) {
+            $discount_amount = $discount['discount_amount'];
+            $product_price = $product->get_price() - $discount_amount;
+            $product->set_price($product_price);  // Set new price with discount
+        }
+    }
+
+    // Add product to order
+    $order->add_product( $product, $quantity );
+    $order->calculate_totals();
+    
+    // Update order status to "Processing"
+    $order->update_status('processing');
+
+    // Apply bundle deals
+    mn_apply_bundle_deals( $order_id, $product_id, $quantity );
+
+    return true;
 }
 
 // Enqueue Admin Styles and Scripts

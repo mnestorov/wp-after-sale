@@ -11,3 +11,6 @@
 
 ### 1.3
 - Creating an admin interface to allow site administrators to easily configure the plugin, manage bundle deals and to customize the appearance of the upsell offers, such as changing the layout, colors, or styles.
+
+### 1.4
+- Implement the functionality to offer discounts or coupons for adding certain additional products to the order.
