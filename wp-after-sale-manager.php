@@ -3,7 +3,7 @@
  * Plugin Name: MN - WordPress After-Sale Manager
  * Plugin URI: https://github.com/mnestorov/wp-after-sale-manager
  * Description: A custom plugin to show additional products on the Thank You page and allow users to add them to their order if the payment method is Cash on Delivery.
- * Version: 1.2
+ * Version: 1.3
  * Author: Martin Nestorov
  * Author URI: https://github.com/mnestorov
  * Text Domain: mn-wordpress-after-sale-manager
@@ -22,6 +22,107 @@ function enqueue_custom_scripts() {
     ));
 }
 add_action( 'wp_enqueue_scripts', 'enqueue_custom_scripts' );
+
+// Register a Settings Page
+function register_settings_page() {
+    add_menu_page(
+        'After-Sale Manager',
+        'After-Sale Manager',
+        'manage_options',
+        'after-sale-manager',
+        'render_settings_page'
+    );
+}
+add_action('admin_menu', 'register_settings_page');
+
+// Render the Settings Page
+function render_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1>After-Sale Manager Settings</h1>
+        <form method="post" action="options.php">
+            <?php
+            settings_fields('after_sale_manager_settings');
+            do_settings_sections('after-sale-manager');
+            submit_button();
+            ?>
+        </form>
+    </div>
+    <?php
+}
+
+// Register Settings and Sections
+function register_settings() {
+    register_setting('after_sale_manager_settings', 'asm_bundle_deals');
+    register_setting('after_sale_manager_settings', 'asm_upsell_styles');
+
+    add_settings_section(
+        'bundle_deals_section',
+        'Bundle Deals',
+        'render_bundle_deals_section',
+        'after-sale-manager'
+    );
+
+    add_settings_section(
+        'upsell_styles_section',
+        'Upsell Styles',
+        'render_upsell_styles_section',
+        'after-sale-manager'
+    );
+}
+add_action('admin_init', 'register_settings');
+
+// Rendering Fields for Managing Bundle Deals
+function render_bundle_deals_section() {
+    // Get saved bundle deals
+    $bundle_deals = get_option('asm_bundle_deals', array());
+
+    echo '<div id="bundle-deals-section">';
+
+    foreach ($bundle_deals as $index => $bundle) {
+        echo '<div class="bundle-deal">';
+        echo '<input type="number" name="asm_bundle_deals[' . $index . '][product_id]" value="' . esc_attr($bundle['product_id']) . '" placeholder="Product ID" />';
+        echo '<input type="number" name="asm_bundle_deals[' . $index . '][free_product_id]" value="' . esc_attr($bundle['free_product_id']) . '" placeholder="Free Product ID" />';
+        echo '<input type="number" name="asm_bundle_deals[' . $index . '][free_quantity]" value="' . esc_attr($bundle['free_quantity']) . '" placeholder="Free Quantity" />';
+        echo '</div>';
+    }
+
+    echo '</div>';
+    echo '<button type="button" id="add-bundle-deal">Add Bundle Deal</button>';
+}
+
+// Rendering Fields for Customizing Upsell Styles
+function render_upsell_styles_section() {
+    // Get saved upsell styles
+    $upsell_styles = get_option('asm_upsell_styles', array(
+        'background_color' => '#ffffff',
+        'text_color' => '#000000',
+        'border_color' => '#cccccc'
+    ));
+
+    echo '<div id="upsell-styles-section">';
+    echo '<input type="text" name="asm_upsell_styles[background_color]" value="' . esc_attr($upsell_styles['background_color']) . '" class="color-field" data-default-color="#ffffff" />';
+    echo '<input type="text" name="asm_upsell_styles[text_color]" value="' . esc_attr($upsell_styles['text_color']) . '" class="color-field" data-default-color="#000000" />';
+    echo '<input type="text" name="asm_upsell_styles[border_color]" value="' . esc_attr($upsell_styles['border_color']) . '" class="color-field" data-default-color="#cccccc" />';
+    echo '</div>';
+}
+
+// Enqueue Admin Styles and Scripts
+function enqueue_admin_scripts($hook) {
+    if($hook != 'toplevel_page_after-sale-manager') {
+        return;
+    }
+    wp_enqueue_style('wp-color-picker');
+    wp_enqueue_script(
+        'admin-scripts',
+        plugin_dir_url(__FILE__) . 'admin.js',
+        array('jquery', 'wp-color-picker'),
+        false,
+        true
+    );
+}
+add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
+
 
 // Customize Thank You page content
 function custom_thank_you_page_content( $order_id ) {
