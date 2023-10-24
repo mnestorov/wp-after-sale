@@ -14,3 +14,6 @@
 
 ### 1.4
 - Implement the functionality to offer discounts or coupons for adding certain additional products to the order.
+
+### 1.5
+- Organizing the plugin into multiple files based on functionality.
