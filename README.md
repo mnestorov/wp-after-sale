@@ -6,7 +6,7 @@
 
 ## Overview
 
-...
+A custom plugin to show additional products (after-sale) on the Thank You page and allow users to add them to their order if the payment method is Cash on Delivery (CoD).
 
 ## Features
 
