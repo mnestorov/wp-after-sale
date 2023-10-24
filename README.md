@@ -1,12 +1,12 @@
 <p align="center"><a href="https://wordpress.org" target="_blank"><img src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/wordpress/wordpress.png" width="100" alt="WordPress Logo"></a></p>
 
-# WordPress - After-Sale Manager
+# WordPress - After-Sale Manager for WooCommerce
 
 [![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
 
 ## Overview
 
-A custom plugin to show additional products (after-sale) on the Thank You page and allow users to add them to their order if the payment method is Cash on Delivery (CoD).
+A custom plugin to show additional products (after-sale) on the [WooCommerce](https://woocommerce.com/) "Thank You" page and allow users to add them to their order if the payment method is Cash on Delivery (CoD).
 
 ## Features
 
