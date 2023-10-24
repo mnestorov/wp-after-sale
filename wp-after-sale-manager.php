@@ -3,7 +3,7 @@
  * Plugin Name: MN - WordPress After-Sale Manager
  * Plugin URI: https://github.com/mnestorov/wp-after-sale-manager
  * Description: A custom plugin to show additional products on the Thank You page and allow users to add them to their order if the payment method is Cash on Delivery.
- * Version: 1.1
+ * Version: 1.2
  * Author: Martin Nestorov
  * Author URI: https://github.com/mnestorov
  * Text Domain: mn-wordpress-after-sale-manager
@@ -86,11 +86,40 @@ function customers_also_bought_shortcode( $atts, $content = null ) {
 }
 add_shortcode( 'customers_also_bought', 'customers_also_bought_shortcode' );
 
+function apply_bundle_deals( $order_id, $product_id, $quantity ) {
+    $order = wc_get_order( $order_id );
+    if ( ! $order ) {
+        error_log( "Order not found: $order_id" );
+        return;
+    }
+
+    // Define bundle deals
+    // Example: Buy product ID 10 and get product ID 20 for free
+    $bundle_deals = array(
+        10 => array(
+            'free_product_id' => 20,
+            'free_quantity' => 1
+        )
+        // ... more bundle deals
+    );
+
+    // Check if the added product triggers a bundle deal
+    if ( isset( $bundle_deals[ $product_id ] ) ) {
+        $bundle_deal = $bundle_deals[ $product_id ];
+        $free_product_id = $bundle_deal['free_product_id'];
+        $free_quantity = $bundle_deal['free_quantity'];
+
+        // Add the free product to the order
+        $order->add_product( wc_get_product( $free_product_id ), $free_quantity );
+        $order->calculate_totals();
+    }
+}
+
 // AJAX action to add product to order
 function ajax_add_product_to_order() {
     // Verify nonce for security
     if ( ! wp_verify_nonce( $_POST['nonce'], 'add_product_to_order_nonce' ) ) {
-        wp_send_json_error( 'Nonce verification failed' );
+        wp_send_json_error( 'Nonce verification failed', 400 );
         wp_die();
     }
 
@@ -101,27 +130,46 @@ function ajax_add_product_to_order() {
 
     // Validate data
     if ( ! $order_id || ! $product_id || ! $quantity ) {
-        wp_send_json_error( 'Invalid data' );
+        wp_send_json_error( 'Invalid data', 400 );
         wp_die();
     }
 
-    // Add product to order and update order status
-    add_product_to_order( $order_id, $product_id, $quantity );
+    // Try to add the product to the order
+    $success = add_product_to_order( $order_id, $product_id, $quantity );
+    if ( ! $success ) {
+        wp_send_json_error( 'Failed to add product to order', 500 );
+        wp_die();
+    }
 
+    // Try to apply bundle deals
+    $success = apply_bundle_deals( $order_id, $product_id, $quantity );  // Apply bundle deals
+    if ( ! $success ) {
+        wp_send_json_error( 'Failed to apply bundle deals', 500 );
+        wp_die();
+    }
+
+    wp_send_json_success( 'Product added and bundle deals applied successfully' );
     wp_die();
 }
+
 add_action( 'wp_ajax_add_product_to_order', 'ajax_add_product_to_order' );
 
 // Function to add product to order and update order status
 function add_product_to_order( $order_id, $product_id, $quantity ) {
     $order = wc_get_order( $order_id );
     // Check if order exists and payment method is Cash on Delivery
-    if ( ! $order || $order->get_payment_method() != 'cod' ) return;
-
+    if ( ! $order || $order->get_payment_method() != 'cod' ) {
+        error_log( "Order not found or payment method is not COD: $order_id" );
+        return;
+    }
+    
     // Add product to order
     $order->add_product( wc_get_product( $product_id ), $quantity );
     $order->calculate_totals();
     
     // Update order status to "Processing"
     $order->update_status('processing');
+
+    // Apply bundle deals
+    apply_bundle_deals( $order_id, $product_id, $quantity );
 }
