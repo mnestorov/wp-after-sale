@@ -14,17 +14,17 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Enqueue scripts and localize data
-function enqueue_custom_scripts() {
+function mn_enqueue_custom_scripts() {
     wp_enqueue_script( 'custom-script', plugin_dir_url( __FILE__ ) . 'script.js', array( 'jquery' ) );
     wp_localize_script( 'custom-script', 'ajax_object', array( 
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce' => wp_create_nonce( 'add_product_to_order_nonce' ),
     ));
 }
-add_action( 'wp_enqueue_scripts', 'enqueue_custom_scripts' );
+add_action( 'wp_enqueue_scripts', 'mn_enqueue_custom_scripts' );
 
 // Register a Settings Page
-function register_settings_page() {
+function mn_register_settings_page() {
     add_menu_page(
         'After-Sale Manager',
         'After-Sale Manager',
@@ -33,10 +33,10 @@ function register_settings_page() {
         'render_settings_page'
     );
 }
-add_action('admin_menu', 'register_settings_page');
+add_action('admin_menu', 'mn_register_settings_page');
 
 // Render the Settings Page
-function render_settings_page() {
+function mn_render_settings_page() {
     ?>
     <div class="wrap">
         <h1>After-Sale Manager Settings</h1>
@@ -52,7 +52,7 @@ function render_settings_page() {
 }
 
 // Register Settings and Sections
-function register_settings() {
+function mn_register_settings() {
     register_setting('after_sale_manager_settings', 'asm_bundle_deals');
     register_setting('after_sale_manager_settings', 'asm_upsell_styles');
 
@@ -70,10 +70,10 @@ function register_settings() {
         'after-sale-manager'
     );
 }
-add_action('admin_init', 'register_settings');
+add_action('admin_init', 'mn_register_settings');
 
 // Rendering Fields for Managing Bundle Deals
-function render_bundle_deals_section() {
+function mn_render_bundle_deals_section() {
     // Get saved bundle deals
     $bundle_deals = get_option('asm_bundle_deals', array());
 
@@ -92,7 +92,7 @@ function render_bundle_deals_section() {
 }
 
 // Rendering Fields for Customizing Upsell Styles
-function render_upsell_styles_section() {
+function mn_render_upsell_styles_section() {
     // Get saved upsell styles
     $upsell_styles = get_option('asm_upsell_styles', array(
         'background_color' => '#ffffff',
@@ -108,7 +108,7 @@ function render_upsell_styles_section() {
 }
 
 // Enqueue Admin Styles and Scripts
-function enqueue_admin_scripts($hook) {
+function mn_enqueue_admin_scripts($hook) {
     if($hook != 'toplevel_page_after-sale-manager') {
         return;
     }
@@ -121,11 +121,10 @@ function enqueue_admin_scripts($hook) {
         true
     );
 }
-add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
-
+add_action('admin_enqueue_scripts', 'mn_enqueue_admin_scripts');
 
 // Customize Thank You page content
-function custom_thank_you_page_content( $order_id ) {
+function mn_custom_thank_you_page_content( $order_id ) {
     $order = wc_get_order( $order_id );
     // Check if order exists and payment method is Cash on Delivery
     if ( ! $order || $order->get_payment_method() != 'cod' ) return;
@@ -145,10 +144,10 @@ function custom_thank_you_page_content( $order_id ) {
     // Display additional products
     echo do_shortcode('[products category="' . implode(',', $categories) . '" limit="4" columns="4"]');
 }
-add_action( 'woocommerce_thankyou', 'custom_thank_you_page_content' );
+add_action( 'woocommerce_thankyou', 'mn_custom_thank_you_page_content' );
 
 // Define a new shortcode to display products commonly purchased together
-function customers_also_bought_shortcode( $atts, $content = null ) {
+function mn_customers_also_bought_shortcode( $atts, $content = null ) {
     // Access the global $wp object to get query variables
     global $wp;
     
@@ -185,24 +184,27 @@ function customers_also_bought_shortcode( $atts, $content = null ) {
     // The 'columns' attribute is set to 4 to display the products in 4 columns
     return do_shortcode('[products category="' . implode(',', $categories) . '" limit="4" columns="4"]');
 }
-add_shortcode( 'customers_also_bought', 'customers_also_bought_shortcode' );
+add_shortcode( 'customers_also_bought', 'mn_customers_also_bought_shortcode' );
 
-function apply_bundle_deals( $order_id, $product_id, $quantity ) {
+// Applu Bundle Deals With the Data From the Plugin Settings
+function mn_apply_bundle_deals( $order_id, $product_id, $quantity ) {
     $order = wc_get_order( $order_id );
     if ( ! $order ) {
         error_log( "Order not found: $order_id" );
         return;
     }
 
-    // Define bundle deals
-    // Example: Buy product ID 10 and get product ID 20 for free
-    $bundle_deals = array(
-        10 => array(
-            'free_product_id' => 20,
-            'free_quantity' => 1
-        )
-        // ... more bundle deals
-    );
+    // Get bundle deals from the plugin settings
+    $bundle_deals_option = get_option('asm_bundle_deals', array());
+
+    // Convert the settings array to a format that's easy to use in the function
+    $bundle_deals = array();
+    foreach ($bundle_deals_option as $bundle_deal) {
+        $bundle_deals[$bundle_deal['product_id']] = array(
+            'free_product_id' => $bundle_deal['free_product_id'],
+            'free_quantity' => $bundle_deal['free_quantity']
+        );
+    }
 
     // Check if the added product triggers a bundle deal
     if ( isset( $bundle_deals[ $product_id ] ) ) {
@@ -217,7 +219,7 @@ function apply_bundle_deals( $order_id, $product_id, $quantity ) {
 }
 
 // AJAX action to add product to order
-function ajax_add_product_to_order() {
+function mn_ajax_add_product_to_order() {
     // Verify nonce for security
     if ( ! wp_verify_nonce( $_POST['nonce'], 'add_product_to_order_nonce' ) ) {
         wp_send_json_error( 'Nonce verification failed', 400 );
@@ -253,10 +255,10 @@ function ajax_add_product_to_order() {
     wp_die();
 }
 
-add_action( 'wp_ajax_add_product_to_order', 'ajax_add_product_to_order' );
+add_action( 'wp_ajax_add_product_to_order', 'mn_ajax_add_product_to_order' );
 
 // Function to add product to order and update order status
-function add_product_to_order( $order_id, $product_id, $quantity ) {
+function mn_add_product_to_order( $order_id, $product_id, $quantity ) {
     $order = wc_get_order( $order_id );
     // Check if order exists and payment method is Cash on Delivery
     if ( ! $order || $order->get_payment_method() != 'cod' ) {
